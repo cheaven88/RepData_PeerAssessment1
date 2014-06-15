@@ -1,20 +1,168 @@
-# Reproducible Research: Peer Assessment 1
+<h1>Reproductible Research - Peer Assessment 1</h1>
+
+<h2> Loading and preprocessing the data </h2>
+```{r}
+#Setting the working drive
+setwd("C:/Users/Mike/Documents/Online Courses/Coursera/Reproducible Research/RepData_PeerAssessment1")
+#loading raw data
+Assign1.Dat<- read.csv("activity.csv")
+#Removing NA's from data for calculations
+Assign1.Dat.clean <- na.omit(Assign1.Dat)
+
+```
+
+<h2> What is mean total number of steps taken per day? </h2>
+
+<h3> Histogram of the total number of steps taken each day </h3>
+```{r fig.width=7, fig.height=6}
+#histogram of all steps
+hist(Assign1.Dat.clean$steps, main ="Histogram of Steps", xlab = "Number of Steps")
+```
+
+<h3> Mean and median total number of steps taken per day </h3>
+```{r}
+#mean of all steps
+mean(na.omit(Assign1.Dat.clean$steps))
+#median of all steps
+median(na.omit(Assign1.Dat.clean$steps))
+#Using tapply to get mean of steps per day
+as.data.frame(tapply(Assign1.Dat.clean$steps, Assign1.Dat.clean$date, mean))
+#Using tapply to get median of steps per day
+as.data.frame(tapply(Assign1.Dat.clean$steps, Assign1.Dat.clean$date, median))
+```
+
+<h2> What is the average daily activity pattern? </h2>
 
 
-## Loading and preprocessing the data
+<h3> Time series plot of the 5-minute interval and the average number of steps taken, averaged across all days </h3>
+```{r fig.width=7, fig.height=6}
+#Avg steps by interval
+##Calculating mean by interval using aggregate
+avgsteps <- aggregate(Assign1.Dat.clean$steps ~ Assign1.Dat.clean$interval, FUN = mean)
+colnames(avgsteps) <- c("interval", "steps")
+#Time series plot
+plot(avgsteps$interval,avgsteps$steps, 
+     main = "Steps by 5 Minute Interval, Averaged Across Days",
+     xlab = "5 Minute Interval",
+     ylab = "Number of Steps",
+     type = "l")
+
+```
+
+<h3> Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps? </h3>
+
+Interval 835 contains the maximum number of steps.
+
+```{r}
+#Creating a sorted version of hte dataset by number of steps
+avgsteps.sort <- avgsteps[order(as.numeric(-avgsteps[,2])),]
+#Returning top row from sorted dataset
+avgsteps.sort[1,]
+```
+
+<h2> Imputing missing values </h2>
+
+<h3> Total number of missing values in the dataset </h3>
+There are 2304 missing values in this dataset
+```{r}
+#Calculating number of NA's from the orignal dataset
+sum(is.na(Assign1.Dat))
+```
+
+<h3> Strategy for filling in all of the missing values in the dataset </h3>
+```{r}
+#Going to replace NA's with the mean of the interval from avgsteps
+##Using transform command to set steps from avgsteps
+Assign1.Dat.impute <- transform(Assign1.Dat, 
+                                steps = ifelse((is.na(steps)) 
+                                               & (interval == avgsteps$interval),
+                                               avgsteps$steps, steps))
+
+```
+
+<h3> New dataset that is equal to the original dataset but with the missing data filled in </h3>
+```{r}
+#Going to replace NA's with the mean of the interval from avgsteps
+#First 10 lines from original data
+Assign1.Dat[1:10,]
+#First 10 lines from imputed data
+Assign1.Dat.impute[1:10,]
+
+```
+
+<h3> Histogram of the total number of steps taken each day </h3>
+```{r fig.width=7, fig.height=6}
+#histogram of all steps with new data
+hist(Assign1.Dat.impute$steps, main ="Histogram of Steps - Imputed Data", xlab = "Number of Steps")
+```
+
+<h4> Calculate and report the mean and median total number of steps taken per day </h4>
+```{r}
+#mean of all steps
+mean(Assign1.Dat.impute$steps)
+#median of all steps
+median(Assign1.Dat.impute$steps)
+#Using tapply to get mean of steps per day
+as.data.frame(tapply(Assign1.Dat.impute$steps, Assign1.Dat.impute$date, mean))
+#Using tapply to get median of steps per day
+as.data.frame(tapply(Assign1.Dat.impute$steps, Assign1.Dat.impute$date, median))
+```
+
+<h5>  Do these values differ from the estimates from the first part of the assignment? </h5>
+The values differ for dates that were previously NA, the dates where the values were already populated were not affected. This suggests that the missing data is mostly relevant when looking at the individual dates. 
+
+<h5> What is the impact of imputing missing data on the estimates of the total daily number of steps? </h5>
+Imputing the missing data gave each date that previously had N/A a step count of 37.38, which would increase the total by a moderate amount. This would increase the overall step count, and may be misleading since there would be a significantly higher step count than there was previously.
 
 
+<h2> Are there differences in activity patterns between weekdays and weekends? </h2>
 
-## What is mean total number of steps taken per day?
+Yes, there appear to be overall more steps on the weekends. The major spike appears on similar intervals on the weekdays and the weekends, but on the weekends there is more activity in the subsequent intervals.
 
+<h3> New factor variable in the dataset with two levels - "weekday" and "weekend" </h3>
+```{r}
+#Adding variable indicating weekend and weekday with the imputed data
+Assign1.Dat.factor <- as.data.frame(cbind(Assign1.Dat.impute, 
+                                  (ifelse((weekdays(as.Date(Assign1.Dat.impute$date)))
+                                    %in% c("Saturday", "Sunday"), "Weekend", "Weekday"
+                                    ))))
+colnames(Assign1.Dat.factor) <- c("steps", "date", "interval", "daytype")
+#First 10 rows of new data with factor variable "daytype" added
+Assign1.Dat.factor[1:10,]
 
+```
 
-## What is the average daily activity pattern?
+<h3> Panel plot containing a time series plot of the 5-minute interval and the average number of steps taken, averaged across all weekday days or weekend days </h3>
 
+```{r fig.width=10, fig.height=10}
+#Subset of data for weekends
+Assign1.Dat.weekend <- Assign1.Dat.factor[ which(Assign1.Dat.factor$daytype == "Weekend"), ]
+#Average interval for weekends
+avgsteps.weekends <- aggregate(Assign1.Dat.weekend$steps ~ Assign1.Dat.weekend$interval,
+                               FUN = mean)
+colnames(avgsteps.weekends) <- c("interval", "steps")
 
+#Subset of data for weekdays
+Assign1.Dat.weekday <- Assign1.Dat.factor[ which(Assign1.Dat.factor$daytype == "Weekday"), ]
+#Average interval for weekdays
+avgsteps.weekdays <- aggregate(Assign1.Dat.weekday$steps ~ Assign1.Dat.weekday$interval,
+                               FUN = mean)
+colnames(avgsteps.weekdays) <- c("interval", "steps")
 
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+#Panel plot of steps on weekends and weekdays
+par(mfrow=c(2,1))
+#Weekdays plot
+plot(avgsteps.weekdays$interval, avgsteps.weekdays$steps, 
+     type = "l",
+     col="blue",
+     main = "Weekdays",
+     xlab = "Interval",
+     ylab = "Steps")
+#Weekends Plot
+plot(avgsteps.weekends$interval, avgsteps.weekends$steps, 
+     type = "l",
+     col="red",
+     main = "Weekends",
+     xlab = "Interval",
+     ylab = "Steps")
+```
